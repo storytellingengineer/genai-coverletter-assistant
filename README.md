@@ -1,44 +1,114 @@
-# 🧠 GenAI Cover Letter Assistant
+# GenAI Cover Letter Assistant
 
-GenAI Cover Letter Assistant is a simple project that shows how AI can make job applications faster and smarter. This project helps you generate a **professional cover letter** for any job — just by uploading your **resume (PDF)** and pasting the **job description**.
+A lightweight Streamlit application that turns a resume and job description into a tailored cover letter.
 
-It extracts your key skills and achievements automatically, shows them on screen, and then creates a **formal yet conversational** cover letter you can download as `.txt` or `.docx`.
+The project supports a local, rule-based generation mode and an optional OpenAI-powered mode. The generated letter can be reviewed in the browser and exported as `.txt` or `.docx`.
 
+## What it does
 
-## ✨ Features
+1. Upload a text-based PDF resume.
+2. Paste the target job description.
+3. Enter the company and role.
+4. Choose a writing tone.
+5. Generate a tailored draft.
+6. Review/edit the draft and download it.
 
-- Upload your **resume (PDF)** and paste **job description (text)**  
-- Auto-extracts:
-  - Your **name**, **email**, and **phone**
-  - Top **skills** and **achievements**
-  - Important **keywords** from the job description  
-- Generates a **professional cover letter** (no need for manual writing)
-- Works **offline** with a rule-based template  
-- Can optionally use **OpenAI API** for smarter and more detailed letters
-- Download the result as `.txt` or `.docx`
-- Clean, interactive **Streamlit** interface
+## Features
 
+- PDF resume text extraction
+- Basic contact-detail and job-keyword extraction
+- Rule-based generation that works without an API key
+- Optional OpenAI generation for more contextual personalization
+- Three tones: Professional, Conversational, and Concise
+- Editable output before export
+- `.txt` and `.docx` downloads
+- Simple browser-based Streamlit interface
 
-## 🧰 Tech Stack
+## Architecture
 
-- **Python 3.10+**
-- **Streamlit** – for the web app
-- **pdfplumber / PyPDF2** – to extract text from PDF resumes
-- **python-docx** – to export `.docx` files
-- **OpenAI API (optional)** – for AI-generated letters
+```text
+Resume PDF ──┐
+             ├──> Resume Parser ──┐
+Job Description ──────────────────┤
+                                  v
+                         Generation Layer
+                       /                   \
+              Rule-based                OpenAI
+                 mode                    mode
+                       \                   /
+                        v                 v
+                         Cover Letter
+                              |
+                     Review / Edit / Export
+```
 
-## 🧠 Future Ideas
+## Tech Stack
 
-- Add **DOCX resume support**
-- **Highlight matched keywords** between resume and JD
-- Improve prompt for better personalization
-- Add “Copy to clipboard” button
-- Support multiple tone styles and templates
+- Python 3.10+
+- Streamlit
+- pdfplumber
+- python-docx
+- OpenAI API (optional)
 
-## 🪶 Author
+## Run locally
 
-Built with ❤️ using Python and Streamlit.
+```bash
+git clone https://github.com/storytellingengineer/genai-coverletter-assistant.git
+cd genai-coverletter-assistant
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirments.txt
+streamlit run app.py
+```
 
-By [Aayush Saxena](https://www.linkedin.com/in/storytellingengineer)
+Open the local Streamlit URL shown in your terminal.
 
-If you like this project, ⭐ star the repo and share your thoughts!
+## Optional: OpenAI mode
+
+Set an environment variable before starting the application:
+
+```bash
+export OPENAI_API_KEY="your_api_key_here"
+```
+
+On Windows PowerShell:
+
+```powershell
+$env:OPENAI_API_KEY="your_api_key_here"
+```
+
+Then enable **Use OpenAI** in the sidebar.
+
+The API key is read from the environment and is not stored by the application.
+
+## Project structure
+
+```text
+genai-coverletter-assistant/
+├── app.py
+├── requirments.txt
+├── README.md
+├── LICENSE
+└── .gitignore
+```
+
+## Limitations
+
+- Resume parsing currently supports PDF files only.
+- Scanned/image-only PDFs may not produce usable text.
+- The rule-based mode is intentionally lightweight and should be treated as a baseline.
+- AI-generated content should always be reviewed for accuracy before use.
+
+## Future improvements
+
+- DOCX resume support
+- Better resume section and achievement extraction
+- Job/resume match analysis
+- Keyword highlighting
+- Multiple cover-letter templates
+- Copy-to-clipboard support
+- Deployment with Streamlit Community Cloud
+
+## License
+
+MIT License. See [LICENSE](LICENSE).
