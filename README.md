@@ -1,113 +1,72 @@
 # GenAI Cover Letter Assistant
 
-A lightweight Streamlit application that turns a resume and job description into a tailored cover letter.
+A public-ready AI application that turns a PDF resume and job description into a tailored cover letter.
 
-The project supports a local, rule-based generation mode and an optional OpenAI-powered mode. The generated letter can be reviewed in the browser and exported as `.txt` or `.docx`.
+## Architecture
 
-## What it does
-
-1. Upload a text-based PDF resume.
-2. Paste the target job description.
-3. Enter the company and role.
-4. Choose a writing tone.
-5. Generate a tailored draft.
-6. Review/edit the draft and download it.
+- **Frontend:** Static HTML/JavaScript, deployable on Vercel
+- **Backend:** FastAPI on Render
+- **LLM:** Optional OpenRouter free-model route (`meta-llama/llama-3.1-8b-instruct:free` by default)
+- **Fallback:** Local rule-based generation when no model key is configured
+- **Evaluation roadmap:** Langfuse tracing and LLM-as-judge evaluation
 
 ## Features
 
 - PDF resume text extraction
-- Basic contact-detail and job-keyword extraction
-- Rule-based generation that works without an API key
-- Optional OpenAI generation for more contextual personalization
-- Three tones: Professional, Conversational, and Concise
-- Editable output before export
-- `.txt` and `.docx` downloads
-- Simple browser-based Streamlit interface
+- Company, role, tone, and job-description inputs
+- AI generation through OpenRouter-compatible free models
+- Deterministic fallback generation without an API key
+- CORS-enabled API for the Vercel frontend
+- File-size and content-type validation
+- Health endpoint at `/health`
 
-## Architecture
+## Deploy backend on Render
 
-```text
-Resume PDF ──┐
-             ├──> Resume Parser ──┐
-Job Description ──────────────────┤
-                                  v
-                         Generation Layer
-                       /                   \
-              Rule-based                OpenAI
-                 mode                    mode
-                       \                   /
-                        v                 v
-                         Cover Letter
-                              |
-                     Review / Edit / Export
-```
+Create a Python Web Service connected to this repository and branch `production-mvp`.
 
-## Tech Stack
+- **Build command:** `pip install -r backend/requirements.txt`
+- **Start command:** `uvicorn backend.main:app --host 0.0.0.0 --port $PORT`
+- **Plan:** Free
+- **Region:** Singapore (recommended for India-based users)
 
-- Python 3.10+
-- Streamlit
-- pdfplumber
-- python-docx
-- OpenAI API (optional)
+Add these environment variables in Render:
 
-## Run locally
+- `OPENROUTER_API_KEY` — optional; enables free-model generation
+- `OPENROUTER_MODEL` — optional; defaults to `meta-llama/llama-3.1-8b-instruct:free`
+- `APP_URL` — optional frontend URL for provider metadata
+
+The free Render service can sleep after inactivity, so the first request may be slow. Free instances are suitable for a public MVP, not guaranteed always-on production workloads.
+
+## Deploy frontend on Vercel
+
+Import the repository into Vercel and set the project root to `frontend`. Deploy it as a static site. Open the deployed page and enter the Render API URL, for example:
+
+`https://genai-coverletter-api.onrender.com`
+
+## Local development
+
+Backend:
 
 ```bash
-git clone https://github.com/storytellingengineer/genai-coverletter-assistant.git
-cd genai-coverletter-assistant
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirments.txt
-streamlit run app.py
+pip install -r backend/requirements.txt
+uvicorn backend.main:app --reload
 ```
 
-Open the local Streamlit URL shown in your terminal.
+Frontend: open `frontend/index.html` locally or deploy it through Vercel.
 
-## Optional: OpenAI mode
+## Langfuse evaluation roadmap
 
-Set an environment variable before starting the application:
+The next iteration should add:
 
-```bash
-export OPENAI_API_KEY="your_api_key_here"
-```
+1. Langfuse traces for generation requests.
+2. Dataset-based regression tests for factuality, relevance, tone, and completeness.
+3. LLM-as-judge evaluators with groundedness and unsupported-claim checks.
+4. Prompt/version tracking and latency/cost metrics.
+5. Red-team tests for prompt injection and sensitive data leakage.
 
-On Windows PowerShell:
+## Safety
 
-```powershell
-$env:OPENAI_API_KEY="your_api_key_here"
-```
-
-Then enable **Use OpenAI** in the sidebar.
-
-The API key is read from the environment and is not stored by the application.
-
-## Project structure
-
-```text
-genai-coverletter-assistant/
-├── app.py
-├── requirments.txt
-├── README.md
-├── LICENSE
-└── .gitignore
-```
-
-## Limitations
-
-- Resume parsing currently supports PDF files only.
-- Scanned/image-only PDFs may not produce usable text.
-- The rule-based mode is intentionally lightweight and should be treated as a baseline.
-- AI-generated content should always be reviewed for accuracy before use.
-
-## Future improvements
-
-- DOCX resume support
-- Better resume section and achievement extraction
-- Job/resume match analysis
-- Keyword highlighting
-- Multiple cover-letter templates
-- Copy-to-clipboard support
-- Deployment with Streamlit Community Cloud
+Generated letters must be reviewed before submission. The system is instructed not to invent resume facts, but automated generation is not a substitute for human verification. Do not upload confidential or highly sensitive documents unless you understand the deployment and provider data policies.
 
 ## License
 
