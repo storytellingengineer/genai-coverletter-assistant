@@ -1,15 +1,18 @@
-import io, os, re
+import io, os, re, time
 from typing import Optional
 import httpx
 import pdfplumber
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from langfuse import get_client
 
-app = FastAPI(title="GenAI Cover Letter Assistant API", version="1.1.0")
+app = FastAPI(title="GenAI Cover Letter Assistant API", version="1.2.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 MAX_RESUME_BYTES = 8 * 1024 * 1024
 MAX_JD_CHARS = 30000
+LANGFUSE_ENABLED = bool(os.getenv("LANGFUSE_PUBLIC_KEY") and os.getenv("LANGFUSE_SECRET_KEY"))
+langfuse = get_client() if LANGFUSE_ENABLED else None
 
 
 def extract_text(data: bytes) -> str:
@@ -62,7 +65,7 @@ async def llm_letter(resume: str, jd: str, company: str, role: str, tone: str) -
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "llm_enabled": bool(os.getenv("OPENROUTER_API_KEY")), "version": "1.1.0"}
+    return {"status": "ok", "llm_enabled": bool(os.getenv("OPENROUTER_API_KEY")), "version": "1.2.0", "langfuse_enabled": LANGFUSE_ENABLED}
 
 
 @app.post("/api/generate")
