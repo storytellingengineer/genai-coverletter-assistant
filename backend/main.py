@@ -5,13 +5,39 @@ import pdfplumber
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="GenAI Cover Letter Assistant API", version="1.0.0")
+app = FastAPI(title="GenAI Cover Letter Assistant API", version="1.1.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+MAX_RESUME_BYTES = 8 * 1024 * 1024
+MAX_JD_CHARS = 30000
 
 
 def extract_text(data: bytes) -> str:
     with pdfplumber.open(io.BytesIO(data)) as pdf:
         return "\n".join((p.extract_text() or "") for p in pdf.pages).strip()
+
+
+def validate_inputs(job_description: str, company: str, role: str) -> None:
+    if len(job_description.strip()) < 80:
+        raise HTTPException(422, "Job description is too short; provide at least 80 characters")
+    if len(job_description) > MAX_JD_CHARS:
+        raise HTTPException(413, "Job description is too long")
+    if not company.strip() or len(company.strip()) > 200:
+        raise HTTPException(422, "Please provide a valid company name")
+    if not role.strip() or len(role.strip()) > 200:
+        raise HTTPException(422, "Please provide a valid role")
+
+
+def word_count(text: str) -> int:
+    return len(text.split())
+
+
+def grounded_claims(resume: str, letter: str) -> dict:
+    resume_terms = set(re.findall(r"[A-Za-z][A-Za-z+#.-]{3,}", resume.lower()))
+    letter_terms = set(re.findall(r"[A-Za-z][A-Za-z+#.-]{3,}", letter.lower()))
+    overlap = len(resume_terms & letter_terms)
+    coverage = round(overlap / max(len(letter_terms), 1), 3)
+    return {"resume_term_overlap": overlap, "grounding_coverage": coverage}
 
 
 def fallback_letter(resume: str, jd: str, company: str, role: str, tone: str) -> str:
@@ -36,19 +62,21 @@ async def llm_letter(resume: str, jd: str, company: str, role: str, tone: str) -
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "llm_enabled": bool(os.getenv("OPENROUTER_API_KEY"))}
+    return {"status": "ok", "llm_enabled": bool(os.getenv("OPENROUTER_API_KEY")), "version": "1.1.0"}
 
 
 @app.post("/api/generate")
 async def generate(resume: UploadFile = File(...), job_description: str = Form(...), company: str = Form(...), role: str = Form(...), tone: str = Form("Professional")):
+    validate_inputs(job_description, company, role)
     if resume.content_type != "application/pdf":
         raise HTTPException(400, "Please upload a PDF resume")
     data = await resume.read()
-    if len(data) > 8 * 1024 * 1024:
+    if len(data) > MAX_RESUME_BYTES:
         raise HTTPException(413, "Resume must be smaller than 8 MB")
     text = extract_text(data)
     if not text:
         raise HTTPException(422, "No readable text found in the PDF")
     letter = await llm_letter(text, job_description, company, role, tone)
     provider = "openrouter" if letter else "fallback"
-    return {"letter": letter or fallback_letter(text, job_description, company, role, tone), "provider": provider}
+    final_letter = letter or fallback_letter(text, job_description, company, role, tone)
+    return {"letter": final_letter, "provider": provider, "word_count": word_count(final_letter), "grounding": grounded_claims(text, final_letter)}
