@@ -90,4 +90,7 @@ async def generate(resume: UploadFile = File(...), job_description: str = Form(.
     letter = await llm_letter(text, job_description, company, role, tone)
     provider = "openrouter" if letter else "fallback"
     final_letter = letter or fallback_letter(text, job_description, company, role, tone)
-    return {"letter": final_letter, "provider": provider, "word_count": word_count(final_letter), "grounding": grounded_claims(text, final_letter)}
+    grounding = grounded_claims(text, final_letter)
+    latency_ms = round((time.perf_counter() - started) * 1000, 2)
+    record_generation(company, role, tone, provider, len(text), len(job_description), word_count(final_letter), grounding, latency_ms)
+    return {"letter": final_letter, "provider": provider, "word_count": word_count(final_letter), "grounding": grounding, "observability": {"enabled": LANGFUSE_ENABLED, "latency_ms": latency_ms}}
