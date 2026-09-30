@@ -63,6 +63,14 @@ async def llm_letter(resume: str, jd: str, company: str, role: str, tone: str) -
         return response.json()["choices"][0]["message"]["content"].strip()
 
 
+def record_generation(company: str, role: str, tone: str, provider: str, resume_chars: int, jd_chars: int, word_count_value: int, grounding: dict, latency_ms: float) -> None:
+    if not langfuse:
+        return
+    obs = langfuse.start_observation(name="cover-letter-generation", as_type="span", metadata={"company": company, "role": role, "tone": tone, "resume_chars": resume_chars, "job_description_chars": jd_chars}, version="1.2.0")
+    obs.update(output={"provider": provider, "word_count": word_count_value, "grounding_coverage": grounding["grounding_coverage"], "latency_ms": latency_ms})
+    obs.end()
+    langfuse.flush()
+
 @app.get("/health")
 def health():
     return {"status": "ok", "llm_enabled": bool(os.getenv("OPENROUTER_API_KEY")), "version": "1.2.0", "langfuse_enabled": LANGFUSE_ENABLED}
