@@ -77,7 +77,7 @@ async def generate(resume: UploadFile = File(...), job_description: str = Form(.
     if len(data) > MAX_RESUME_BYTES:
         raise HTTPException(413, "Resume must be smaller than 8 MB")
     text = extract_text(data)
-    if not text:
+    \n    if not text:
         raise HTTPException(422, "No readable text found in the PDF")
     letter = await llm_letter(text, job_description, company, role, tone)
     provider = "openrouter" if letter else "fallback"
