@@ -3,10 +3,12 @@ from typing import Optional
 import httpx
 import pdfplumber
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
+from pydantic import BaseModel
+from backend.evaluation import evaluate_letter
 from fastapi.middleware.cors import CORSMiddleware
 from langfuse import get_client
 
-app = FastAPI(title="GenAI Cover Letter Assistant API", version="1.2.0")
+app = FastAPI(title="GenAI Cover Letter Assistant API", version="1.3.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 MAX_RESUME_BYTES = 8 * 1024 * 1024
@@ -66,14 +68,14 @@ async def llm_letter(resume: str, jd: str, company: str, role: str, tone: str) -
 def record_generation(company: str, role: str, tone: str, provider: str, resume_chars: int, jd_chars: int, word_count_value: int, grounding: dict, latency_ms: float) -> None:
     if not langfuse:
         return
-    obs = langfuse.start_observation(name="cover-letter-generation", as_type="span", metadata={"company": company, "role": role, "tone": tone, "resume_chars": resume_chars, "job_description_chars": jd_chars}, version="1.2.0")
+    obs = langfuse.start_observation(name="cover-letter-generation", as_type="span", metadata={"company": company, "role": role, "tone": tone, "resume_chars": resume_chars, "job_description_chars": jd_chars}, version="1.3.0")
     obs.update(output={"provider": provider, "word_count": word_count_value, "grounding_coverage": grounding["grounding_coverage"], "latency_ms": latency_ms})
     obs.end()
     langfuse.flush()
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "llm_enabled": bool(os.getenv("OPENROUTER_API_KEY")), "version": "1.2.0", "langfuse_enabled": LANGFUSE_ENABLED}
+    return {"status": "ok", "llm_enabled": bool(os.getenv("OPENROUTER_API_KEY")), "version": "1.3.0", "langfuse_enabled": LANGFUSE_ENABLED}
 
 
 @app.post("/api/generate")
@@ -95,3 +97,24 @@ async def generate(resume: UploadFile = File(...), job_description: str = Form(.
     latency_ms = round((time.perf_counter() - started) * 1000, 2)
     record_generation(company, role, tone, provider, len(text), len(job_description), word_count(final_letter), grounding, latency_ms)
     return {"letter": final_letter, "provider": provider, "word_count": word_count(final_letter), "grounding": grounding, "observability": {"enabled": LANGFUSE_ENABLED, "latency_ms": latency_ms}}
+
+
+class EvaluationRequest(BaseModel):
+    resume: str
+    job_description: str
+    letter: str
+    company: str
+    role: str
+    tone: str = "Professional"
+
+
+@app.post("/api/evaluate")
+def evaluate(request: EvaluationRequest):
+    return evaluate_letter(
+        resume=request.resume,
+        job_description=request.job_description,
+        letter=request.letter,
+        company=request.company,
+        role=request.role,
+        tone=request.tone,
+    )
